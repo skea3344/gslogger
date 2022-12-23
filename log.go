@@ -40,28 +40,23 @@ func (level LEVEL) String() string {
 	return "Unknown"
 }
 
-const (
-	DEFAULT_FORMAT = 1
-	JSON_FORMAT    = 2
-)
-
 type baseLog struct {
 	sync.RWMutex
 	flags   LEVEL
 	name    string
 	sinks   []ISink
-	service *LogService
+	service *logService
 }
 
 func (log *baseLog) write(flag LEVEL, format string, v ...interface{}) {
 	file, line := stacktrace(3)
-	msg := &Msg{
-		Flag:    flag,
-		TS:      time.Now(),
-		Log:     log,
-		File:    file,
-		Line:    line,
-		Content: fmt.Sprintf(format, v...),
+	msg := &Message{
+		Flag:      flag,
+		Timestamp: time.Now(),
+		Log:       log,
+		File:      file,
+		Line:      line,
+		Content:   fmt.Sprintf(format, v...),
 	}
 	log.service.dispath(msg)
 }
@@ -72,10 +67,6 @@ func (log *baseLog) String() string {
 
 func (log *baseLog) Flags() LEVEL {
 	return log.flags
-}
-
-func (log *baseLog) SetFlags(flags LEVEL) {
-	log.flags = flags
 }
 
 func (log *baseLog) D(format string, v ...interface{}) {
@@ -106,14 +97,6 @@ func (log *baseLog) F(format string, v ...interface{}) {
 	if log.flags&FATAL != 0 {
 		log.write(FATAL, format, v...)
 	}
-}
-
-func (log *baseLog) SetSinks(sinks ...ISink) {
-	log.sinks = sinks
-}
-
-func (log *baseLog) AddSink(sink ISink) {
-	log.sinks = append(log.sinks, sink)
 }
 
 func (log *baseLog) Sinks() []ISink {

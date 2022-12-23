@@ -43,7 +43,7 @@ func SetLogDir(dir string) {
 	if len(dir) > 0 {
 		LogDir = dir
 	}
-	MakeDir()
+	makedir()
 }
 
 func NewFileSink(ln string, desc string, cutsize uint64) *FileSink {
@@ -68,7 +68,7 @@ func (sink *FileSink) filename() string {
 }
 
 // Recv 实现ISink
-func (sink *FileSink) Recv(msg *Msg) {
+func (sink *FileSink) Recv(msg *Message) {
 	sink.Lock()
 	defer sink.Unlock()
 	if sink.flag != 0xFF {
@@ -76,7 +76,7 @@ func (sink *FileSink) Recv(msg *Msg) {
 	}
 	sink.getlogger()
 	s := fmt.Sprintf("%s (%20s:%5d):[%s] %12s - %s",
-		msg.TS.Format(sink.timeformat),
+		msg.Timestamp.Format(sink.timeformat),
 		msg.File,
 		msg.Line,
 		msg.Flag,
@@ -92,6 +92,9 @@ func (sink *FileSink) Recv(msg *Msg) {
 func (sink *FileSink) Destroy() {
 	sink.Lock()
 	defer sink.Unlock()
+	if sink.flag == 0x00 {
+		return
+	}
 	if sink.logfile != nil {
 		sink.logfile.Close()
 		sink.logfile = nil
@@ -163,8 +166,8 @@ func getDate() string {
 	return fmt.Sprintf("%04d%02d%02d", now.Year(), now.Month(), now.Day())
 }
 
-// Mkdir 创建日志目录
-func MakeDir() {
+// makedir 创建日志目录
+func makedir() {
 	var temp = LogDir
 	if err := os.Mkdir(temp, os.ModePerm); err != nil {
 		if !os.IsExist(err) {

@@ -33,7 +33,7 @@ type consoleSink struct {
 	debugColor func(string) string
 }
 
-func (sink *consoleSink) Recv(msg *Msg) {
+func (sink *consoleSink) Recv(msg *Message) {
 	var color func(string) string
 	switch msg.Flag {
 	case FATAL:
@@ -48,7 +48,7 @@ func (sink *consoleSink) Recv(msg *Msg) {
 		color = sink.debugColor
 	}
 	s := fmt.Sprintf("%s (%20s:%5d) [%s] %12s -- %s",
-		msg.TS.Format(sink.format),
+		msg.Timestamp.Format(sink.format),
 		msg.File,
 		msg.Line,
 		msg.Flag,
@@ -56,3 +56,5 @@ func (sink *consoleSink) Recv(msg *Msg) {
 		msg.Content)
 	fmt.Println(color(s))
 }
+
+func (sink *consoleSink) Destroy() {}

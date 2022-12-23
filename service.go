@@ -12,7 +12,7 @@ const (
 )
 
 // 虽然可以自己创建LogService 但是建议全局使用一个默认服务即可
-var global *LogService
+var global *logService
 
 func init() {
 	global = NewService(DefaultCacheSize)
@@ -48,100 +48,93 @@ func Join() {
 }
 
 // LogService 日志服务
-type LogService struct {
+type logService struct {
 	sync.Mutex
-	MsgChan chan *Msg       // 消息缓冲队列
-	Flags   LEVEL           // 级别
-	Sinks   []ISink         // 输出后台列表
-	Logs    map[string]ILog // 注册的日志对象
-	Exit    chan bool       // 关闭服务
+	msgChan chan *Message   // 消息缓冲队列
+	flags   LEVEL           // 级别
+	sinks   []ISink         // 输出后台列表
+	logs    map[string]ILog // 注册的日志对象
+	exit    chan bool       // 关闭服务
 }
 
-func NewService(cachesize int) *LogService {
-	service := &LogService{
-		MsgChan: make(chan *Msg, cachesize),
-		Flags:   FATAL | ERROR | WARN | INFO | DEBUG,
-		Logs:    make(map[string]ILog),
-		Exit:    make(chan bool, 1),
-		Sinks:   []ISink{&console},
+func NewService(cachesize int) *logService {
+	service := &logService{
+		msgChan: make(chan *Message, cachesize),
+		flags:   FATAL | ERROR | WARN | INFO | DEBUG,
+		logs:    make(map[string]ILog),
+		exit:    make(chan bool, 1),
+		sinks:   []ISink{&console},
 	}
 	go service.start()
 	return service
 }
 
-func (service *LogService) dispath(msg *Msg) {
-	service.MsgChan <- msg
+func (service *logService) dispath(msg *Message) {
+	service.msgChan <- msg
 }
 
-func (service *LogService) SetFlags(flags LEVEL) {
+func (service *logService) SetFlags(flags LEVEL) {
 	service.Lock()
 	defer service.Unlock()
-	service.Flags = flags
-	for _, log := range service.Logs {
-		log.SetFlags(flags)
-	}
+	service.flags = flags
 }
 
-func (service *LogService) SetSinks(sinks ...ISink) {
+func (service *logService) SetSinks(sinks ...ISink) {
 	service.Lock()
 	defer service.Unlock()
-	service.Sinks = sinks
-	for _, log := range service.Logs {
-		log.SetSinks(sinks...)
-	}
+	service.sinks = sinks
 }
 
-func (service *LogService) AddSink(sink ISink) {
+func (service *logService) AddSink(sink ISink) {
 	service.Lock()
 	defer service.Unlock()
-	service.Sinks = append(service.Sinks, sink)
-	for _, log := range service.Logs {
-		log.AddSink(sink)
-	}
+	service.sinks = append(service.sinks, sink)
 }
 
-func (service *LogService) ResetSinks() {
+func (service *logService) ResetSinks() {
 	service.Lock()
 	defer service.Unlock()
-	service.Sinks = []ISink{&console}
-	for _, log := range service.Logs {
-		log.SetSinks(service.Sinks...)
-	}
+	service.sinks = []ISink{&console}
 }
 
-func (service *LogService) Get(name string) ILog {
+func (service *logService) Get(name string) ILog {
 	service.Lock()
 	defer service.Unlock()
-	if log, ok := service.Logs[name]; ok {
+	if log, ok := service.logs[name]; ok {
 		return log
 	}
 	log := &baseLog{
-		flags:   service.Flags,
+		flags:   service.flags,
 		name:    name,
-		sinks:   service.Sinks,
+		sinks:   service.sinks,
 		service: service,
 	}
-	service.Logs[name] = log
+	service.logs[name] = log
 	return log
 }
 
-func (service *LogService) Logoff(name string) {
+func (service *logService) Logoff(name string) {
 	service.Lock()
 	defer service.Unlock()
-	delete(service.Logs, name)
+	delete(service.logs, name)
 }
 
-func (service *LogService) start() {
-	for msg := range service.MsgChan {
+func (service *logService) start() {
+	for msg := range service.msgChan {
 		for _, sink := range msg.Log.Sinks() {
 			sink.Recv(msg)
 		}
 	}
-	close(service.Exit)
+	for _, log := range service.logs {
+		for _, sink := range log.Sinks() {
+			sink.Destroy()
+		}
+	}
+	close(service.exit)
 }
 
-func (service *LogService) Join() {
-	close(service.MsgChan)
-	for range service.Exit {
+func (service *logService) Join() {
+	close(service.msgChan)
+	for range service.exit {
 	}
 }
