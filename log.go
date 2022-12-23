@@ -57,6 +57,7 @@ func (log *baseLog) write(flag LEVEL, format string, v ...interface{}) {
 		File:      file,
 		Line:      line,
 		Content:   fmt.Sprintf(format, v...),
+		Format:    log.service.format,
 	}
 	log.service.dispath(msg)
 }

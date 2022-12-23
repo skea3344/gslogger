@@ -14,7 +14,7 @@ type ILog interface {
 	W(format string, v ...interface{}) // 输出警告级别日志
 	E(format string, v ...interface{}) // 输出错误级别日志
 	F(format string, v ...interface{}) // 输出致命级别日志
-	String() string
+	String() string                    // 名字
 }
 
 // ISink 日志输出后台接口

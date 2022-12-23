@@ -35,7 +35,7 @@ type FileSink struct {
 	num        uint32   // 分片计数器
 	logname    string   // 日志名字
 	desc       string   // 日志描述
-	timeformat string   // 日志时间格式
+	timeFormat string   // 日志时间格式
 }
 
 // SetLogDir 如果要使用文件日志，需要先调用此接口设置日志目录
@@ -53,7 +53,7 @@ func NewFileSink(ln string, desc string, cutsize uint64) *FileSink {
 		logname:    ln,
 		desc:       desc,
 		flag:       0xFF,
-		timeformat: "2006-01-02 15:04:05.000000",
+		timeFormat: "2006-01-02 15:04:05.000000",
 		date:       getDate(),
 	}
 	if sink.size == 0 {
@@ -75,17 +75,10 @@ func (sink *FileSink) Recv(msg *Message) {
 		log.Fatal("filelog not available")
 	}
 	sink.getlogger()
-	s := fmt.Sprintf("%s (%20s:%5d):[%s] %12s - %s",
-		msg.Timestamp.Format(sink.timeformat),
-		msg.File,
-		msg.Line,
-		msg.Flag,
-		msg.Log,
-		msg.Content)
 	if sink.logfile != nil {
-		fmt.Fprintln(sink.logfile, s)
+		fmt.Fprintln(sink.logfile, msg.To_string(sink.timeFormat))
 	} else {
-		fmt.Fprintln(os.Stdout, s)
+		fmt.Fprintln(os.Stdout, msg.To_string(sink.timeFormat))
 	}
 }
 

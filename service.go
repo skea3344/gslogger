@@ -5,16 +5,32 @@
 
 package logger
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/mgutz/ansi"
+)
 
 const (
 	DefaultCacheSize = 512
+)
+
+const (
+	DefaultFormat = 1
+	JSONFormat    = 2
 )
 
 // 虽然可以自己创建LogService 但是建议全局使用一个默认服务即可
 var global *logService
 
 func init() {
+	console.fatalColor = ansi.ColorFunc("red+u")
+	console.errorColor = ansi.ColorFunc("red")
+	console.warnColor = ansi.ColorFunc("yellow")
+	console.infoColor = ansi.ColorFunc("white")
+	console.debugColor = ansi.ColorFunc("cyan")
+	console.timeFormat = "2006-01-02 15:04:05" // 精度自己选择
+	// console.format = "2006-01-02 15:04:05.999"
 	global = NewService(DefaultCacheSize)
 }
 
@@ -38,6 +54,14 @@ func Get(name string) ILog {
 	return global.Get(name)
 }
 
+func SetFormat(format int) {
+	switch format {
+	case JSONFormat:
+		global.format = JSONFormat
+	default:
+	}
+}
+
 func Logoff(name string) {
 	global.Logoff(name)
 }
@@ -55,6 +79,7 @@ type logService struct {
 	sinks   []ISink         // 输出后台列表
 	logs    map[string]ILog // 注册的日志对象
 	exit    chan bool       // 关闭服务
+	format  int             // 日志格式
 }
 
 func NewService(cachesize int) *logService {
@@ -64,6 +89,7 @@ func NewService(cachesize int) *logService {
 		logs:    make(map[string]ILog),
 		exit:    make(chan bool, 1),
 		sinks:   []ISink{&console},
+		format:  DefaultFormat,
 	}
 	go service.start()
 	return service
